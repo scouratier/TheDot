@@ -1,0 +1,10 @@
+## Interface: 50001
+## Title: The Dot
+## Notes: colors a dot based on in-game events
+## Author: Team loob
+## Version: 0.1-ace3
+## X-Category: Interface Enhancements 
+
+embeds.xml
+
+thedot.lua
