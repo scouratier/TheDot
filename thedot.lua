@@ -2,7 +2,7 @@ dot = LibStub("AceAddon-3.0"):NewAddon("dot", "AceConsole-3.0", "AceEvent-3.0")
 
 function dot:OnInitialize()
     -- Called when the addon is loaded
-    self:Print("DOT LOADED: The Dot-1.0")
+    self:Print("DOT LOADED: The Dot-1.0.0")
 end
 
 function dot:OnEnable()
@@ -11,19 +11,29 @@ function dot:OnEnable()
                             "TheDot-Prot" , 
                             "TheDot-Elemental" ,
                             "TheDot-Enhancement" ,
-                            "TheDot-Resto"
+                            "TheDot-Resto",
+                            "TheDot-Ret",
+                            "TheDot-Blood"
                         }
     
     local f = CreateFrame( "Frame" , "one" , UIParent )
+    square_size = 20
     f:SetFrameStrata( "HIGH" )
-    f:SetWidth( 15 )
-    f:SetHeight( 15 )
+    f:SetWidth( square_size )--* 2 )
+    f:SetHeight( square_size )
     f:SetPoint( "TOPLEFT" )
     
+    --self.zero = CreateFrame( "StatusBar" , nil , f )
+    --self.zero:SetPoint( "TOPLEFT" )
+    --self.zero:SetWidth( square_size )
+    --self.zero:SetHeight( square_size )    
+    --self.zero:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
+    --self.zero:SetStatusBarColor( 230/255 , 244/255 , 225/255 )
+
     self.one = CreateFrame( "StatusBar" , nil , f )
-    self.one:SetPoint( "TOPLEFT" )
-    self.one:SetWidth( 15 )
-    self.one:SetHeight( 15 )    
+    self.one:SetPoint( "TOPLEFT" )--, square_size , 0 )
+    self.one:SetWidth( square_size )
+    self.one:SetHeight( square_size )    
     self.one:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
     self.one:SetStatusBarColor( 0 , 0 , 0 )
 
@@ -110,7 +120,9 @@ function getSpecId()
                          "Shield Slam" ,
                          "Thunderstorm" ,
                          "Lava Lash" ,
-                         "Earth Shield" }
+                         "Earth Shield",
+                         "Exorcism",
+                         "Bone Shield" }
     local specId
     
     while true do
