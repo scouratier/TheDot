@@ -13,7 +13,8 @@ function dot:OnEnable()
                             "TheDot-Enhancement" ,
                             "TheDot-Resto",
                             "TheDot-Ret",
-                            "TheDot-Blood"
+                            "TheDot-Blood",
+                            "TheDot-Frost"
                         }
     
     local f = CreateFrame( "Frame" , "one" , UIParent )
@@ -66,12 +67,17 @@ function dot:OnDisable()
 end
 
 function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , lineId , sguid )
-    if who == "Hexloob" or who == "Xloob" then
+    if who == "Hexloob-DarkIron" 
+        or who == "Xloob-DarkIron" 
+        or who == "Vexloob-DarkIron"
+        or who == "Paloob-DarkIron"
+        or who == "Hexloob-DarkIron" then
         if msg == "+" then
             self:Print("Force Following")
             self.forceFollow = 4
         end
         if msg == "-" then
+            self.Print("No longer Force Following")
             self.forceFollow = 0
         end
         if msg == "up" then
@@ -122,7 +128,8 @@ function getSpecId()
                          "Lava Lash" ,
                          "Earth Shield",
                          "Exorcism",
-                         "Bone Shield" }
+                         "Bone Shield",
+                         "Obliterate" }
     local specId
     
     while true do
