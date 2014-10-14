@@ -13,25 +13,26 @@ function dot:OnEnable()
                             "TheDot-Enhancement" ,
                             "TheDot-Resto",
                             "TheDot-Ret",
-                            "TheDot-Blood"
+                            "TheDot-Blood",
+                            "TheDot-Frost"
                         }
     
     local f = CreateFrame( "Frame" , "one" , UIParent )
-    square_size = 20
+    square_size = 5
     f:SetFrameStrata( "HIGH" )
-    f:SetWidth( square_size )--* 2 )
+    f:SetWidth( square_size * 2 )
     f:SetHeight( square_size )
     f:SetPoint( "TOPLEFT" )
     
-    --self.zero = CreateFrame( "StatusBar" , nil , f )
-    --self.zero:SetPoint( "TOPLEFT" )
-    --self.zero:SetWidth( square_size )
-    --self.zero:SetHeight( square_size )    
-    --self.zero:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
-    --self.zero:SetStatusBarColor( 230/255 , 244/255 , 225/255 )
+    self.zero = CreateFrame( "StatusBar" , nil , f )
+    self.zero:SetPoint( "TOPLEFT" )
+    self.zero:SetWidth( square_size )
+    self.zero:SetHeight( square_size )    
+    self.zero:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
+    self.zero:SetStatusBarColor( 230/255 , 244/255 , 225/255 )
 
     self.one = CreateFrame( "StatusBar" , nil , f )
-    self.one:SetPoint( "TOPLEFT" )--, square_size , 0 )
+    self.one:SetPoint( "TOPLEFT" , square_size , 0 )
     self.one:SetWidth( square_size )
     self.one:SetHeight( square_size )    
     self.one:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
@@ -66,12 +67,17 @@ function dot:OnDisable()
 end
 
 function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , lineId , sguid )
-    if who == "Hexloob" or who == "Xloob" then
+    if who == "Hexloob-DarkIron" 
+        or who == "Xloob-DarkIron" 
+        or who == "Vexloob-DarkIron"
+        or who == "Paloob-DarkIron"
+        or who == "Hexloob-DarkIron" then
         if msg == "+" then
             self:Print("Force Following")
             self.forceFollow = 4
         end
         if msg == "-" then
+            self.Print("No longer Force Following")
             self.forceFollow = 0
         end
         if msg == "up" then
@@ -122,7 +128,8 @@ function getSpecId()
                          "Lava Lash" ,
                          "Earth Shield",
                          "Exorcism",
-                         "Bone Shield" }
+                         "Bone Shield",
+                         "Obliterate" }
     local specId
     
     while true do
