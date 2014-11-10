@@ -18,7 +18,7 @@ function dot:OnEnable()
                         }
     
     local f = CreateFrame( "Frame" , "one" , UIParent )
-    square_size = 15
+    square_size = 5
     f:SetFrameStrata( "HIGH" )
     f:SetWidth( square_size * 2 )
     f:SetHeight( square_size )
@@ -67,12 +67,19 @@ function dot:OnDisable()
 end
 
 function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , lineId , sguid )
-    if who == "Hexloob" or who == "Xloob" or who == "Rexloob-DarkIron" then
+    if who == "Hexloob-DarkIron" 
+        or who == "Xloob-DarkIron" 
+        or who == "Vexloob-DarkIron"
+        or who == "Paloob-DarkIron"
+        or who == "Hexloob-DarkIron"
+        or who == "Rexloob-DarkIron" then
+
         if msg == "+" then
             self:Print("Force Following")
             self.forceFollow = 4
         end
         if msg == "-" then
+            self.Print("No longer Force Following")
             self.forceFollow = 0
         end
         self.mount = 0
