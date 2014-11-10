@@ -13,25 +13,26 @@ function dot:OnEnable()
                             "TheDot-Enhancement" ,
                             "TheDot-Resto",
                             "TheDot-Ret",
-                            "TheDot-Blood"
+                            "TheDot-Blood",
+                            "TheDot-Frost"
                         }
     
     local f = CreateFrame( "Frame" , "one" , UIParent )
-    square_size = 20
+    square_size = 15
     f:SetFrameStrata( "HIGH" )
-    f:SetWidth( square_size )--* 2 )
+    f:SetWidth( square_size * 2 )
     f:SetHeight( square_size )
     f:SetPoint( "TOPLEFT" )
     
-    --self.zero = CreateFrame( "StatusBar" , nil , f )
-    --self.zero:SetPoint( "TOPLEFT" )
-    --self.zero:SetWidth( square_size )
-    --self.zero:SetHeight( square_size )    
-    --self.zero:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
-    --self.zero:SetStatusBarColor( 230/255 , 244/255 , 225/255 )
+    self.zero = CreateFrame( "StatusBar" , nil , f )
+    self.zero:SetPoint( "TOPLEFT" )
+    self.zero:SetWidth( square_size )
+    self.zero:SetHeight( square_size )    
+    self.zero:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
+    self.zero:SetStatusBarColor( 230/255 , 244/255 , 225/255 )
 
     self.one = CreateFrame( "StatusBar" , nil , f )
-    self.one:SetPoint( "TOPLEFT" )--, square_size , 0 )
+    self.one:SetPoint( "TOPLEFT" , square_size , 0 )
     self.one:SetWidth( square_size )
     self.one:SetHeight( square_size )    
     self.one:SetStatusBarTexture("Interface\\AddOns\\thedot\\Images\\Gloss")
@@ -66,7 +67,7 @@ function dot:OnDisable()
 end
 
 function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , lineId , sguid )
-    if who == "Hexloob" or who == "Xloob" then
+    if who == "Hexloob" or who == "Xloob" or who == "Rexloob-DarkIron" then
         if msg == "+" then
             self:Print("Force Following")
             self.forceFollow = 4
@@ -74,13 +75,21 @@ function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , l
         if msg == "-" then
             self.forceFollow = 0
         end
-        if msg == "up" then
+        self.mount = 0
+        if msg == "up" and IsMounted() == false then
+            self:Print("Not mounted, lets fix that..")
             self.mount = 8
         end
-        if msg == "down" then
-            self.mount = 0
+           -- self:Print("Mounted already..")
+           -- self.mount = 0
+           -- end
+        --end
+        if msg == "down" and IsMounted() == true then
+            self:Print("On foot!")
+            self.mount = 16
         end
-        self.status = self.combat + self.follow + self.forceFollow
+        self.status = self.combat + self.follow + self.forceFollow + self.mount
+        self:Print(self.follow, self.mount)
         self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
     end
 end
@@ -88,7 +97,7 @@ end
 function dot:COMBAT_LOG_EVENT_UNFILTERED( poo , t , event , hideCaster , sWho , sName , sFlags , dWho , dName , dFlags , spellId , spellName , spellSchool )
     self.spec = getSpecId()
     self.combat = 0
-    if InCombatLockdown() == 1 or UnitAffectingCombat("focus") == 1 then
+    if InCombatLockdown() == true or UnitAffectingCombat("focus") == true then
         self.combat = 1
     end
     
@@ -122,7 +131,8 @@ function getSpecId()
                          "Lava Lash" ,
                          "Earth Shield",
                          "Exorcism",
-                         "Bone Shield" }
+                         "Bone Shield",
+                         "Obliterate" }
     local specId
     
     while true do

@@ -1,4 +1,4 @@
-## Interface: 50001
+## Interface: 60001
 ## Title: The Dot
 ## Notes: colors a dot based on in-game events
 ## Author: Team loob
