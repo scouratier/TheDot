@@ -17,13 +17,14 @@ key_map["0"] = 0x30
 key_map["-"] = 0xBD
 key_map["="] = 0xBB
 
-key_map["E"] = 0x44
+key_map["E"] = 0x45
 key_map["R"] = 0x52
 key_map["F"] = 0x46
 key_map["G"] = 0x47
 key_map["Z"] = 0x5A
 key_map["X"] = 0x58
 key_map["C"] = 0x43
+key_map["`"] = 0xC0
 
 function dot:OnInitialize()
     -- Called when the addon is loaded
@@ -38,6 +39,7 @@ function dot:OnEnable()
     self.casting = 0
     self.combat = 0
     self.follow = 0
+    self.following = 0
     self.forceFollow = 0
     self.range = 0
     self.status = 0
@@ -55,7 +57,13 @@ function dot:OnEnable()
                             "TheDot-Blood",
                             "TheDot-Frost",
                             "TheDot-Destruction",
-                            "TheDot-Holy"
+                            "TheDot-Demonology",
+                            "TheDot-Holy",
+                            "TheDot-Havoc",
+                            "TheDot-Vengeance",
+                            "TheDot-Affliction",
+                            "TheDot-Unholy",
+                            "TheDot-Augmentation"
                         }
 
     
@@ -84,7 +92,7 @@ function dot:OnEnable()
     -- self:Print( self.spec )
     local loaded , reason = LoadAddOn( specModules[self.spec] )
     if not loaded then
-        self:Print( "Could not load Spec: ",reason )
+        self:Print( "Could not load Spec: ", reason )
     end
     self.one:SetStatusBarColor( self.spec/255 , 0 , 0 )
     --self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -99,14 +107,80 @@ function dot:OnDisable()
     
 end
 
+function shouldIInterupt(unit)
+    local badSpell = {}
+    spell, rank, displayName, icon, startTime, endTime, isTradeSkill, castID, interrupt = UnitCastingInfo(unit)
+
+    if not spell == nil then
+        if interrupt == true then
+            return true
+        end
+    end
+end
+
+function doDot(target, spell, nextCast)
+    local s, scount, sexpirationTime, sisMine = isUnitDeBuffed(target, spell)
+    if s ~= nil and sisMine == "player" then
+        if sexpirationTime then
+            sexpirein = sexpirationTime - GetTime();
+        end
+        if sexpirein > 0 and sexpirein < 2 then
+            return ifPossible(spell, nextCast)
+        end
+    else
+        return ifPossible(spell, nextCast)
+    end
+    return nextCast
+end
+
+function isUnitBuffed(unit, spellname)
+    for i=1,40 do
+        local name, _, count, _, _, expiresAt = UnitBuff(unit,i)
+        if name == spellname then
+            return true, count, expiresAt
+        end
+    end
+    return false, 0, 0
+end
+
+function isUnitDeBuffed(unit, spellname)
+    for i=1,40 do
+        local name, _, count, _, _, expiresAt, owner = UnitDebuff(unit,i)
+        if name == spellname then
+            return true, count, expiresAt, owner
+        end
+    end
+    return false, 0, 0
+end
+
 function ifPossible(spell, nextCast)
     s, scooldown = canCastNow( spell )
+
+    --for k, v in pairs(spells) do
+      --  print(k, v)
+    --end
     if s == true then
         local m = spells[spell]
         if m == nil then
-            print(spell, m)
-        end 
-        return spells[spell]
+            print(m, spell)
+        end
+        return m
+    else
+        return nextCast
+    end
+end
+
+function ifMacroPossible(spell, nextCast, realSpell)
+    s, scooldown = canCastNow( realSpell )
+    --for k, v in pairs(spells) do
+    --    print(k, v)
+    --end
+    if s == true then
+        local m = spells[spell]
+        if m == nil then
+            print(m, realSpell)
+        end
+        return m
     else
         return nextCast
     end
@@ -137,9 +211,22 @@ function buffUp(spell)
 end
 
 function canCastNow(inSpell)
-    local start, duration, enable
+    local start, duration, enable, inRange
     local usable, noRage = IsUsableSpell( inSpell )
-        if usable == true then
+    if SpellHasRange( inSpell ) then
+        inRange = IsSpellInRange( inSpell , "target" )
+    else
+        inRange = 1
+    end
+    -- catch all.. ugly. AOE spell return nil
+    if inRange == nil then
+        inRange = 1
+    end
+
+    --print(GetSpellInfo( inSpell ))
+    --print(inSpell, inRange)
+    --print(inSpell, usable)
+        if usable == true and inRange == 1 then
             start, duration, enable = GetSpellCooldown( inSpell )
             if start == 0 then
                 return true , 0
@@ -153,6 +240,7 @@ end
 function GetBindingActionText( command )
     local text
     local action, target = command:match( "^(%S+) ?(.*)$" )
+    
 
     --if string.find(action, "ACTION") ~= nil then
     --	print(action)
@@ -167,6 +255,7 @@ function GetBindingActionText( command )
         actionN = actionN + slotOffset
         
         local type, spell, subtype = GetActionInfo( actionN )
+        local lActionText = GetActionText(actionN);
         
         if type == "companion" then
             spell = select( 2, GetCompanionInfo( "CRITTER", spell ) )
@@ -177,8 +266,10 @@ function GetBindingActionText( command )
             spell = GetItemInfo( spell )
             text = spell
         elseif type == "macro" then
-            spell = GetMacroInfo( spell )
-            text = spell
+            if lActionText then
+                text = lActionText
+            end
+            print("result", text, spell)
         elseif type == "spell" then
             spell = GetSpellInfo( spell )
             text = spell
@@ -188,6 +279,8 @@ function GetBindingActionText( command )
 	if action:sub( 1, 12 ) == "ACTIONBUTTON" then
         actionN = tonumber( action:match( "%d+" ) )
         local type, spell, subtype = GetActionInfo( actionN )
+        local lActionText = GetActionText(actionN)
+        --print(type, spell)
         if type == "companion" then
             spell = select( 2, GetCompanionInfo( "CRITTER", spell ) )
             text = spell
@@ -197,8 +290,10 @@ function GetBindingActionText( command )
             spell = GetItemInfo( spell )
             text = spell
         elseif type == "macro" then
-            spell = GetMacroInfo( spell )
-            text = spell
+            if lActionText then
+                text = lActionText
+            end
+            print("result", text, spell)
         elseif type == "spell" then
             spell = GetSpellInfo( spell )
             text = spell
@@ -209,6 +304,8 @@ function GetBindingActionText( command )
         actionT = tonumber( action:match( "%a+%d+%a+(%d+)" ) )
         actionN = barN*12 + actionT - 12
         local type, spell, subtype = GetActionInfo( actionN )
+        local lActionText = GetActionText(actionN)
+       -- print(type, spell)
         if type == "companion" then
             spell = select( 2, GetCompanionInfo( "CRITTER", spell ) )
             text = spell
@@ -218,8 +315,10 @@ function GetBindingActionText( command )
             spell = GetItemInfo( spell )
             text = spell
         elseif type == "macro" then
-            spell = GetMacroInfo( spell )
-            text = spell
+            if lActionText then
+                text = lActionText
+            end
+            print("result", text, spell)
         elseif type == "spell" then
             spell = GetSpellInfo( spell )
             text = spell
@@ -242,7 +341,9 @@ function saveme()
             spell = GetItemInfo( spell )
             text = spell
         elseif type == "macro" then
+            print(spell)
             spell = GetMacroInfo( spell )
+            print(spell)
             text = spell
         elseif type == "spell" then
             spell = GetSpellInfo( spell )
@@ -283,32 +384,65 @@ function reportActionButtons()
 			if lActionText then
 				lMessage = lMessage .. " \"" .. lActionText .. "\"";
 			end
-			--DEFAULT_CHAT_FRAME:AddMessage(lMessage);
+			DEFAULT_CHAT_FRAME:AddMessage(lMessage);
 			--print(lActionSlot, type, id, subType, spellID)
 		end
 	end
 end
 
 function GetBindings()
-	--reportActionButtons()
+	reportActionButtons()
     spells = {}
     local i, j
     for i = 1, GetNumBindings() do
+        
         local command, key1, key2 = GetBinding( i )
+        --print(command, key1, key2)
+        if command == "ACTIONBUTTON9" then
+                spell = GetBindingActionText( command )
+                if command ~= nil then
+                    
+                end
+                print(spell,":" ,command,":", key1,":", key2)
+        --      print(macro,":" ,command,":", key1,":", key2)
+        end
+
         if command ~= "NONE" and command ~= "CLICK" then
             for j = 2, select( "#", GetBinding( i ) ) do
+                
                 local key = GetBindingText( select( j, GetBinding( i ) ), "KEY_" )
                 local spell = GetBindingActionText( command )
-                if spell == "Blood Boil" then
-                    print(key,spell,command)
-                end
-                if spell ~= nil and "BINDING_HEADER_ACTIONBAR" and key ~= "BINDING_HEADER_MULTIACTIONBAR" then
-                	if command:sub( 1, 17 ) == "BONUSACTIONBUTTON" then
-                	    --key = command:match( "%d+" )
-                	end
-                    --print("KEY", key, spell)
-                	local hexkey = key_map[key]
-                    spells[spell] = hexkey
+                --print("command" , command)
+                --print("key", key)
+                --print(GetBindingActionText(GetBindingByKey("R")))
+                --print(GetBindingActionText(GetBindingByKey("E")))
+                --local type, id, subType, spellID = GetActionInfo(command)
+                
+                --if type == "macro" then
+                --    local name, iconTexture, body, isLocal GetMacroInfo( id )
+                --    print("macro name", name)
+                --    spell = name     
+                --end
+
+                --if command == "ACTIONBUTTON9" then
+                --    spell = GetBindingActionText( command )
+                --    if command ~= nil then
+                        
+                --    end
+                --    print(spell,":" ,command,":", key1,":", key2)
+            --      print(macro,":" ,command,":", key1,":", key2)
+                --end
+                
+                if spell ~= nil and key ~= "BINDING_HEADER_ACTIONBAR" and key ~= "BINDING_HEADER_MULTIACTIONBAR" then
+                    --print(key,spell,command)
+                    if key:sub(1, 24) ~= "BINDING_HEADER_ACTIONBAR" then
+                        if command:sub( 6, 17 ) == "ACTIONBUTTON" then
+                            --key = command:match( "%d+" )
+                        end
+                        --print("KEY", key, spell)
+                        local hexkey = key_map[key]
+                        spells[spell] = hexkey
+                    end
                 end
             end
         end
@@ -317,16 +451,17 @@ function GetBindings()
 end
 
 function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , lineId , sguid )
-    if who == "Hexloob-Hydraxis" or 
-    	who == "Feloob-DarkIron" or
-    	who == "Feloob-Hydraxis" or
-        who == "Xloob-Hydraxis" or 
-        who == "Rexloob-DarkIron" or
-        who == "Dloob-DarkIron" or
-        who == "Dloob-Hydraxis" or
-        who == "Sloob-DarkIron" or
-        who == "Demoob-Hydraxis" or
-        who == "Paloob-Hydraxis" then
+    --if who == "Hexloob" or 
+    --	who == "Feloob-DarkIron" or
+    --	who == "Feloob-Hydraxis" or
+      --  who == "Xloob" or 
+    --    who == "Rexloob-DarkIron" or
+    --    who == "Dloob-DarkIron" or
+    --    who == "Dloob-Hydraxis" or
+    --    who == "Sloob-DarkIron" or
+    --    who == "Demoob-Hydraxis" or
+    --    who == "Paloob-Hydraxis" then
+        print("Got a message")
         if msg == "+" then
             self:Print("Force Following")
             self.forceFollow = 4
@@ -347,9 +482,9 @@ function dot:CHAT_MSG_WHISPER( filler , msg , who , poo , status , id , unkn , l
             self:Print("On foot!")
             self.mount = 16
         end
-        self.status = self.combat + self.follow + self.forceFollow + self.mount
+        self.status = self.combat + self.follow + self.forceFollow + self.following
         self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
-    end
+    --end
 end
 
 function dot:meh(el)
@@ -364,37 +499,35 @@ end
 function dot:Update()
 	self.spec = getSpecId()
     self.combat = 0
-    if InCombatLockdown() == true or UnitAffectingCombat("focus") == true then
+    if InCombatLockdown() == true or UnitAffectingCombat("Focus") == true then
        	self.combat = 1
+        self.follow = 0
     end
     
     if self.combat == 0 then
        	if self.follow == 0 then
            --self:Print("Need to follow")
-           	if ( CheckInteractDistance("focus", 4) ) then
-               self:Print("Following")
-               	FollowUnit("focus")
+           	if ( CheckInteractDistance("Focus", 4) ) then
+                self:Print("Following")
                	self.follow = 2
            	end
        	end
     end
 
     if self.forceFollow == 4 then
-       	if ( CheckInteractDistance("focus", 4) ) then
-           	FollowUnit("focus")
+       	if ( CheckInteractDistance("Focus", 4) ) then
            	self.follow = 2
        	end
     end
-
-    self.status = self.combat + self.follow + self.forceFollow
+    self.status = self.combat + self.follow + self.forceFollow + self.following
     self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
 end
 
 function onUpdate(self, elapsed)
 	--self.lastUpdated = self.lastUpdated + elapsed
-	lastUpdated = lastUpdated + elapsed
+    lastUpdated = lastUpdated + elapsed
 	--if (self.lastUpdated > self.update_interval) then
-	if (lastUpdated > updateInterval) then
+    if (lastUpdated > updateInterval) then
     	dot:Update()
     	lastUpdated = 0
     end
@@ -404,21 +537,29 @@ function getSpecId()
     local int id = 1
     local specSpells = { "Mortal Strike",
                          "Bloodthirst",
-                         "Revenge",
+                         "Thunder Clap",
                          "Thunderstorm",
                          "Lava Lash",
                          "Earth Shield",
-                         "Exorcism",
+                         "Crusader Strike",
                          "Marrowrend",
                          "Obliterate",
-                         "Summon Demon",
-                         "Light of Dawn" }
+                         "Chaos Bolt",
+                         "Call Dreadstalkers",
+                         "Light of Dawn",
+                         "Eye Beam",
+                         "Demon Spikes",
+                         "Unstable Affliction",
+                         "Festering Strike",
+                         "Ebon Might"
+                        }
     local specId
     
     while true do
     
         local spellName, spellSubName = GetSpellBookItemName( id, "spell" );
         if not spellName then
+            --self:Print("No spec found", id)
             do break end
         end
     
@@ -459,14 +600,14 @@ function AddDot(offset, size)
 end
 
 function dot:AUTOFOLLOW_BEGIN( f )
-    self.follow = 2
-    self.status = self.combat + self.follow + self.forceFollow
+    self.following = 8
+    self.status = self.combat + self.follow + self.forceFollow + self.following
     self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
 end
 
 function dot:AUTOFOLLOW_END()
-    self.follow = 0
-    self.status = self.combat + self.follow + self.forceFollow
+    self.following = 0
+    self.status = self.combat + self.follow + self.forceFollow + self.following
     self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
 end
 
@@ -474,7 +615,7 @@ function dot:UNIT_SPELLCAST_START( f , p , s )
     -- spell cast has started, block stuff
     if p == "player" then
         self.casting = 255
-        self.status = self.combat + self.follow + self.forceFollow
+        self.status = self.combat + self.follow + self.forceFollow + self.following
         self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
     end
 end
@@ -482,7 +623,7 @@ end
 function dot:UNIT_SPELLCAST_SUCCEEDED( f, p , s)
     if p == "player" then
         self.casting = 0
-        self.status = self.combat + self.follow + self.forceFollow
+        self.status = self.combat + self.follow + self.forceFollow + self.following
         self.one:SetStatusBarColor( self.spec/255 , self.status/255 , self.casting/255 );
     end
 end
